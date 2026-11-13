@@ -28,6 +28,12 @@ async function expectNoSeriousViolations(page: Page, label: string) {
 
 const SIGNED_OUT = { cookies: [], origins: [] };
 
+/** Wait for the page to go quiet; some pages never fully do (the Turnstile widget keeps a connection open). */
+async function settle(page: Page) {
+  await page.waitForLoadState("load");
+  await page.waitForLoadState("networkidle", { timeout: 8_000 }).catch(() => undefined);
+}
+
 const PUBLIC_PAGES = [
   "/",
   "/journal",
@@ -63,7 +69,7 @@ test.describe("axe: public pages", () => {
   for (const path of PUBLIC_PAGES) {
     test(path, async ({ page }) => {
       await page.goto(path);
-      await page.waitForLoadState("networkidle");
+      await settle(page);
       await expectNoSeriousViolations(page, path);
     });
   }
@@ -74,7 +80,7 @@ test.describe("axe: admin screens (previews)", () => {
   for (const path of PREVIEWS) {
     test(path, async ({ page }) => {
       await page.goto(path);
-      await page.waitForLoadState("networkidle");
+      await settle(page);
       await expectNoSeriousViolations(page, path);
     });
   }
@@ -116,7 +122,7 @@ test.describe("axe: admin pages, signed in", () => {
   ]) {
     test(path, async ({ page }) => {
       await page.goto(path);
-      await page.waitForLoadState("networkidle");
+      await settle(page);
       await expectNoSeriousViolations(page, path);
     });
   }

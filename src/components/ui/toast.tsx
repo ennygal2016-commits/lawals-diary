@@ -74,16 +74,15 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             </ToastPrimitive.Close>
           </ToastPrimitive.Root>
         ))}
-        {/* Mounted only while a toast exists: an always-present empty viewport stopped Chrome from recording the
-            page's Largest Contentful Paint on phones (Lighthouse "no LCP" → poor performance score). */}
-        {items.length > 0 ? (
-          <ToastPrimitive.Viewport
-            className={cn(
-              "fixed left-1/2 z-[60] flex w-[calc(100%-2.5rem)] max-w-[420px] -translate-x-1/2 flex-col gap-2 outline-none",
-              "bottom-[calc(100px+env(safe-area-inset-bottom))] lg:bottom-6",
-            )}
-          />
-        ) : null}
+        {/* Always mounted (Radix keeps a reference to it — unmounting it lost every later toast), but display:none
+            while empty: an empty fixed viewport stopped Chrome recording Largest Contentful Paint on phones. */}
+        <ToastPrimitive.Viewport
+          className={cn(
+            "fixed left-1/2 z-[60] flex w-[calc(100%-2.5rem)] max-w-[420px] -translate-x-1/2 flex-col gap-2 outline-none",
+            "bottom-[calc(100px+env(safe-area-inset-bottom))] lg:bottom-6",
+            items.length === 0 && "hidden",
+          )}
+        />
       </ToastPrimitive.Provider>
     </ToastContext.Provider>
   );

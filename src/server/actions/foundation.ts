@@ -14,6 +14,7 @@ import {
 } from "@/lib/validation/foundation";
 import type { ApplicationStatus } from "@/types/database";
 import { DOCS_BUCKET } from "@/server/queries/foundation";
+import { removeFiles } from "@/server/photos/storage";
 
 export type FoundationResult = { ok: true; message: string } | { ok: false; message: string };
 
@@ -109,7 +110,7 @@ export async function recordPayment(formData: FormData): Promise<FoundationResul
     p_receipt_path: receiptPath,
   });
   if (error) {
-    if (receiptPath) await supabase.storage.from(DOCS_BUCKET).remove([receiptPath]);
+    if (receiptPath) await removeFiles(supabase, DOCS_BUCKET, [receiptPath]);
     return {
       ok: false,
       message: error.message.includes("Funded")
@@ -118,8 +119,7 @@ export async function recordPayment(formData: FormData): Promise<FoundationResul
     };
   }
   // A new receipt replaces the old file.
-  if (receiptPath && before?.receipt_path)
-    await supabase.storage.from(DOCS_BUCKET).remove([before.receipt_path]);
+  if (receiptPath && before?.receipt_path) await removeFiles(supabase, DOCS_BUCKET, [before.receipt_path]);
   refresh(parsed.data.id);
   return { ok: true, message: "Payment recorded." };
 }

@@ -59,12 +59,24 @@ export function ProfileForm({
       <div className="grid gap-5 md:grid-cols-2">
         <Field label="Display name" required error={errors.display_name?.message}>
           {(control) => (
-            <Input {...control} autoComplete="name" maxLength={60} {...register("display_name")} />
+            <Input
+              {...control}
+              autoComplete="name"
+              maxLength={60}
+              defaultValue={defaults.display_name}
+              {...register("display_name")}
+            />
           )}
         </Field>
         <Field label="Nickname" required hint="Shown to your partner." error={errors.nickname?.message}>
           {(control) => (
-            <Input {...control} autoComplete="nickname" maxLength={40} {...register("nickname")} />
+            <Input
+              {...control}
+              autoComplete="nickname"
+              maxLength={40}
+              defaultValue={defaults.nickname}
+              {...register("nickname")}
+            />
           )}
         </Field>
       </div>

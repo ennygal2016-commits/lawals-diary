@@ -83,9 +83,10 @@ export function NotificationBell({
     if (!realtime || !process.env.NEXT_PUBLIC_SUPABASE_URL) return;
     let cleanup = () => {};
     let cancelled = false;
-    void import("@/lib/supabase/browser").then(({ createClient }) => {
+    void import("@/lib/supabase/browser").then(async ({ createRealtimeClient }) => {
       if (cancelled) return;
-      const supabase = createClient();
+      const supabase = await createRealtimeClient();
+      if (cancelled) return;
       const channel = supabase
         .channel(`notifications:${userId}`)
         .on(

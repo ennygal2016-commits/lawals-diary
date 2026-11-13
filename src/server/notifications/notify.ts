@@ -1,5 +1,7 @@
 import "server-only";
 
+import { randomUUID } from "node:crypto";
+
 import { createElement } from "react";
 import { after } from "next/server";
 import { render, toPlainText } from "@react-email/components";
@@ -30,12 +32,14 @@ export async function notifyPartner(
     const me = profiles?.find((p) => p.user_id === actorId);
     const partner = profiles?.find((p) => p.user_id !== actorId);
     if (!partner) return;
-    const { data } = await supabase
+    // The id is made here, not read back: RLS lets each partner read only their OWN notifications, so
+    // insert(...).select() on a row for the other partner was refused — and the whole insert with it.
+    const id = randomUUID();
+    const { error } = await supabase
       .from("notifications")
-      .insert({ user_id: partner.user_id, type, payload: { ...payload, from: me?.nickname ?? "" } })
-      .select("id")
-      .single();
-    if (data) after(() => deliverInstant([data.id]));
+      .insert({ id, user_id: partner.user_id, type, payload: { ...payload, from: me?.nickname ?? "" } });
+    if (error) throw new Error(error.message);
+    after(() => deliverInstant([id]));
   } catch (err) {
     console.error("[notify] failed:", err instanceof Error ? err.message : err);
   }

@@ -11,7 +11,7 @@ import {
   updatePhotoSchema,
   type UpdatePhotoInput,
 } from "@/lib/validation/photo";
-import { syncPublicCopies } from "@/server/photos/storage";
+import { removeFiles, syncPublicCopies } from "@/server/photos/storage";
 import { PHOTO_BUCKET, PUBLIC_PHOTO_BUCKET, signPaths } from "@/server/queries/photos";
 import { type LibraryPhoto, applyPhotoFilter } from "@/server/queries/photo-library";
 
@@ -216,8 +216,8 @@ export async function deletePhoto(id: string): Promise<{ ok: boolean; message: s
   if (error) return { ok: false, message: "Couldn’t delete that photo." };
 
   await Promise.all([
-    supabase.storage.from(PHOTO_BUCKET).remove(allVariantPaths(parseVariants(row.variants))),
-    supabase.storage.from(PUBLIC_PHOTO_BUCKET).remove(allVariantPaths(parseVariants(row.public_variants))),
+    removeFiles(supabase, PHOTO_BUCKET, allVariantPaths(parseVariants(row.variants))),
+    removeFiles(supabase, PUBLIC_PHOTO_BUCKET, allVariantPaths(parseVariants(row.public_variants))),
   ]);
 
   for (const entryId of new Set((links ?? []).map((l) => l.entry_id))) {

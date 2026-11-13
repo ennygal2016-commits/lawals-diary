@@ -27,7 +27,8 @@ export function OfflineBanner() {
     };
   }, []);
   return (
-    <div role="status" aria-live="polite">
+    // A live region without role="status", so it doesn't compete with each page's own status messages.
+    <div aria-live="polite">
       {offline ? (
         <p className="fixed inset-x-0 top-0 z-[60] m-0 bg-warning px-4 py-2 text-center text-[14px] font-medium text-[#1a1408]">
           You’re offline — changes won’t save until you’re back online.

@@ -10,8 +10,10 @@ test.skip(!partners, MISSING_ENV);
 test.describe("Home", () => {
   test("header: date, greeting with nickname, one h1", async ({ page }) => {
     await page.goto("/admin");
-    await expect(page.locator("h1")).toHaveCount(1);
-    await expect(page.locator("h1")).toHaveText(/^Good (morning|afternoon|evening),\s*D_Gal\.$/);
+    // Visible only: while the page streams in, React briefly keeps the incoming copy in a hidden container.
+    const h1 = page.locator("h1:visible");
+    await expect(h1).toHaveCount(1);
+    await expect(h1).toHaveText(/^Good (morning|afternoon|evening),\s*D_Gal\.$/);
     // "Tuesday 3 November"
     await expect(
       page.getByText(/^(Mon|Tues|Wednes|Thurs|Fri|Satur|Sun)day \d{1,2} [A-Z][a-z]+$/).first(),
@@ -77,6 +79,9 @@ test.describe("notes", () => {
     const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
       auth: { persistSession: false },
     });
+    // The note and its reply both notify; the reply's excerpt is the reply text, so match on the note id.
+    const { data: notes } = await db.from("notes").select("id").like("body", `${marker}%`);
+    for (const n of notes ?? []) await db.from("notifications").delete().eq("payload->>note_id", n.id);
     await db.from("notes").delete().like("body", `${marker}%`);
   });
 

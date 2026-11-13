@@ -25,11 +25,17 @@ test.afterAll(async () => {
   if (ids.length) {
     const { data: links } = await db.from("entry_photos").select("photo_id").in("entry_id", ids);
     await db.from("entries").delete().in("id", ids);
+    await db.from("notifications").delete().like("payload->>title", `${marker}%`);
     const photoIds = (links ?? []).map((l) => l.photo_id);
     if (photoIds.length) {
-      const { data: photos } = await db.from("photos").select("variants").in("id", photoIds);
-      const paths = (photos ?? []).flatMap((p) => Object.values(p.variants as Record<string, string>));
-      if (paths.length) await db.storage.from("photos-private").remove(paths);
+      // Each size is { webp, jpeg }; public copies (if the entry was public) live in photos-public.
+      const { data: photos } = await db.from("photos").select("variants, public_variants").in("id", photoIds);
+      const flat = (v: unknown) =>
+        Object.values((v ?? {}) as Record<string, Record<string, string>>).flatMap((f) => Object.values(f));
+      const priv = (photos ?? []).flatMap((p) => flat(p.variants));
+      const pub = (photos ?? []).flatMap((p) => flat(p.public_variants));
+      if (priv.length) await db.storage.from("photos-private").remove(priv);
+      if (pub.length) await db.storage.from("photos-public").remove(pub);
       await db.from("photos").delete().in("id", photoIds);
     }
   }
@@ -109,7 +115,8 @@ test("full entry: every field, a stripped photo, body, public → read view", as
   });
   expect(row!.slug).toMatch(/-lake-walk-[0-9a-f]{6}$/);
   const { data: photo } = await db.from("photos").select("variants").eq("id", row!.cover_photo_id!).single();
-  const path = (photo!.variants as Record<string, string>)["2400"]!;
+  // Each size is stored as { webp, jpeg }.
+  const path = (photo!.variants as Record<string, { webp: string }>)["2400"]!.webp;
   const { data: blob } = await db.storage.from("photos-private").download(path);
   const meta = await sharp(Buffer.from(await blob!.arrayBuffer())).metadata();
   expect(meta.exif).toBeUndefined();

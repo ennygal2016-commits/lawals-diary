@@ -20,8 +20,8 @@ export function LiveRefresh({ table }: { table: "foundation_applications" | "app
 
     let cleanup = () => {};
     if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
-      void import("@/lib/supabase/browser").then(({ createClient }) => {
-        const supabase = createClient();
+      void import("@/lib/supabase/browser").then(async ({ createRealtimeClient }) => {
+        const supabase = await createRealtimeClient();
         const channel = supabase
           .channel(`live:${table}`)
           .on("postgres_changes", { event: "*", schema: "public", table }, refresh)

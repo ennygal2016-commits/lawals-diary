@@ -251,6 +251,7 @@ export function EntryForm({
               placeholder="Give the day a name"
               maxLength={TITLE_MAX}
               autoComplete="off"
+              defaultValue={initial.title}
               {...register("title")}
             />
           )}
@@ -258,7 +259,15 @@ export function EntryForm({
 
         <div className="grid grid-cols-2 gap-3 md:gap-5">
           <Field label="Date" error={errors.entry_date?.message}>
-            {(control) => <Input {...control} type="date" max={maxDate} {...register("entry_date")} />}
+            {(control) => (
+              <Input
+                {...control}
+                type="date"
+                max={maxDate}
+                defaultValue={initial.entry_date}
+                {...register("entry_date")}
+              />
+            )}
           </Field>
           <Field label="Location" error={errors.location?.message}>
             {(control) => (
@@ -267,6 +276,7 @@ export function EntryForm({
                 placeholder="Where were you?"
                 maxLength={LOCATION_MAX}
                 autoComplete="off"
+                defaultValue={initial.location ?? ""}
                 {...register("location")}
               />
             )}

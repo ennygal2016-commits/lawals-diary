@@ -73,7 +73,11 @@ test.afterAll(async () => {
   await service().from("entries").delete().like("title", `${marker}%`);
 });
 
-const titles = (page: Page) => page.locator("main ol > li").getByRole("link").allInnerTexts();
+/** The result titles — after the page shows its result count (allInnerTexts doesn't wait for rendering). */
+async function titles(page: Page) {
+  await expect(page.getByText(/^\d+ results?$|No entries match/).first()).toBeVisible();
+  return page.locator("main ol > li").getByRole("link").allInnerTexts();
+}
 
 test("full-text search over title, body and location (prefix words), drafts and deleted excluded", async ({
   page,
@@ -92,10 +96,12 @@ test("full-text search over title, body and location (prefix words), drafts and 
 
 test("months are grouped newest first with the right counts", async ({ page }) => {
   await page.goto(`/admin/timeline?q=${marker}`);
+  await titles(page); // waits for the results to render
   const headings = await page.getByRole("heading", { level: 2 }).allInnerTexts();
-  expect(headings.map((h) => h.replace(/\s+/g, " ").trim())).toEqual([
-    "July 2025 2 entries",
-    "June 2025 1 entry",
+  // Lower-cased: the counts are styled in capitals.
+  expect(headings.map((h) => h.replace(/\s+/g, " ").trim().toLowerCase())).toEqual([
+    "july 2025 2 entries",
+    "june 2025 1 entry",
   ]);
 });
 
@@ -111,7 +117,7 @@ test("filters: visibility, author, mood, category, date range", async ({ page })
   await check("category=everyday", ["quiet sunday", "june rain"]);
   await check("from=2025-07-01&to=2025-07-10", ["quiet sunday"]);
   await check("photos=1", []);
-  await expect(page.getByText(/No entries match/)).toBeVisible();
+  await expect(page.getByText(/No entries match/).filter({ visible: true })).toBeVisible();
 });
 
 test("the row shows author chip, day, category, comment count and visibility", async ({ page }) => {

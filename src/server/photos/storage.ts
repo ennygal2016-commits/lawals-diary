@@ -12,6 +12,7 @@ import {
 } from "@/lib/images/photo";
 import { type VariantSet, VARIANT_SIZES, allVariantPaths, parseVariants } from "@/lib/images/variants";
 import type { Database } from "@/types/database";
+import { createServiceClient } from "@/lib/supabase/service";
 import { PHOTO_BUCKET, PUBLIC_PHOTO_BUCKET } from "@/server/queries/photos";
 
 type Client = SupabaseClient<Database>;
@@ -48,7 +49,7 @@ export async function storeProcessedPhoto(supabase: Client, userId: string, proc
   const results = await Promise.all(uploads);
   const paths = allVariantPaths(variants);
   if (results.some((r) => r.error)) {
-    await supabase.storage.from(PHOTO_BUCKET).remove(paths);
+    await removeFiles(supabase, PHOTO_BUCKET, paths);
     throw new Error("upload failed");
   }
 
@@ -61,10 +62,37 @@ export async function storeProcessedPhoto(supabase: Client, userId: string, proc
     height: processed.height,
   });
   if (error) {
-    await supabase.storage.from(PHOTO_BUCKET).remove(paths);
+    await removeFiles(supabase, PHOTO_BUCKET, paths);
     throw new Error(error.message);
   }
   return { id, variants };
+}
+
+/**
+ * Deletes files and makes sure they are really gone. Supabase's remove() can answer "ok" while deleting nothing
+ * (objects filtered out by a storage policy, or a transient failure), which once left a photo's public copies
+ * reachable after it was made private. So: count what was removed, retry, then fall back to the service role —
+ * callers have already checked the user is one of the two admins. Returns true only when every file is gone.
+ */
+export async function removeFiles(supabase: Client, bucket: string, paths: string[]): Promise<boolean> {
+  let left = [...new Set(paths)].filter(Boolean);
+  for (let attempt = 0; attempt < 2 && left.length; attempt++) {
+    const { data, error } = await supabase.storage.from(bucket).remove(left);
+    if (!error) {
+      const gone = new Set((data ?? []).map((o) => o.name));
+      left = left.filter((p) => !gone.has(p));
+    }
+  }
+  if (left.length) {
+    const service = createServiceClient();
+    const { data, error } = await service.storage.from(bucket).remove(left);
+    if (!error) {
+      const gone = new Set((data ?? []).map((o) => o.name));
+      left = left.filter((p) => !gone.has(p));
+    }
+  }
+  if (left.length) console.error(`removeFiles: ${left.length} file(s) in ${bucket} could not be deleted`);
+  return left.length === 0;
 }
 
 /**
@@ -107,13 +135,23 @@ export async function syncPublicCopies(supabase: Client, photoIds: Iterable<stri
         if (failed) break;
       }
       if (failed) {
-        await supabase.storage.from(PUBLIC_PHOTO_BUCKET).remove(allVariantPaths(copies));
+        await removeFiles(supabase, PUBLIC_PHOTO_BUCKET, allVariantPaths(copies));
         continue;
       }
-      await supabase.from("photos").update({ public_variants: copies }).eq("id", row.id);
+      // Race-safe: only record our copies if nobody else did in the meantime (two saves at once would otherwise
+      // leave one set of public files that nothing points to — still reachable by URL). The loser cleans up.
+      const { data: won } = await supabase
+        .from("photos")
+        .update({ public_variants: copies })
+        .eq("id", row.id)
+        .is("public_variants", null)
+        .select("id");
+      if (!won?.length) await removeFiles(supabase, PUBLIC_PHOTO_BUCKET, allVariantPaths(copies));
     } else if (!row.is_public && hasCopies) {
-      await supabase.storage.from(PUBLIC_PHOTO_BUCKET).remove(allVariantPaths(current));
-      await supabase.from("photos").update({ public_variants: null }).eq("id", row.id);
+      // Only forget the copies once they are really deleted; otherwise the next sync tries again.
+      if (await removeFiles(supabase, PUBLIC_PHOTO_BUCKET, allVariantPaths(current))) {
+        await supabase.from("photos").update({ public_variants: null }).eq("id", row.id);
+      }
     }
   }
 }

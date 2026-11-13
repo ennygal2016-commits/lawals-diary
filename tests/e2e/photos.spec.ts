@@ -107,6 +107,7 @@ test("the upload route sniffs the bytes and refuses non-images and other sites",
 test("upload through the page, then the gallery toggle creates and removes public copies", async ({
   page,
 }) => {
+  test.setTimeout(180_000); // waits for the CDN to drop the public copy
   await page.goto("/admin/photos");
   await page
     .getByTestId("photos-file")
@@ -152,7 +153,17 @@ test("upload through the page, then the gallery toggle creates and removes publi
   await expect(page.getByText("Removed from the public gallery.").first()).toBeVisible();
   const { data: after } = await db.from("photos").select("public_variants").eq("id", id).single();
   expect(after!.public_variants).toBeNull();
-  expect((await fetch(publicUrl, { cache: "no-store" })).ok).toBe(false);
+  // The files are gone from storage at once…
+  const folder = copies["400"]!.webp!.split("/")[0]!;
+  const { data: left } = await db.storage.from("photos-public").list(folder);
+  expect(left ?? []).toEqual([]);
+  // …and Supabase's CDN stops serving its cached copy shortly after (documented: up to about a minute).
+  await expect
+    .poll(async () => (await fetch(`${publicUrl}?v=${Date.now()}`, { cache: "no-store" })).ok, {
+      timeout: 120_000,
+      intervals: [2_000, 5_000, 10_000],
+    })
+    .toBe(false);
 
   // Delete removes the row and the private files.
   const { data: row } = await db.from("photos").select("variants").eq("id", id).single();

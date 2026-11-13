@@ -16,11 +16,25 @@ function service() {
   });
 }
 
+// Safety net: whatever happens above, the real names, time zone and photo come back (from the allowlist), so a
+// failed run can't leave "D_Gal-test" on the real account for the tests (or people) that come after.
+test.afterAll(async () => {
+  const db = service();
+  const { data: allow } = await db.from("admin_allowlist").select("partner, display_name, nickname");
+  for (const a of allow ?? []) {
+    await db
+      .from("profiles")
+      .update({ display_name: a.display_name, nickname: a.nickname, timezone: "America/Toronto" })
+      .eq("partner", a.partner);
+  }
+});
+
 test("Settings › Profile saves display name, nickname and time zone", async ({ page }) => {
   await page.goto("/admin/settings");
   await expect(page.getByRole("heading", { level: 2, name: "Profile" })).toBeVisible();
 
   const nickname = page.getByLabel("Nickname");
+  await expect(nickname).not.toHaveValue("");
   const original = await nickname.inputValue();
 
   await nickname.fill("");
@@ -54,6 +68,8 @@ test("avatar upload is cropped square and stored without metadata", async ({ pag
   expect((await sharp(upload).metadata()).exif).toBeDefined();
 
   await page.goto("/admin/settings");
+  // The file input only reacts once the page's scripts are running (hydrated).
+  await page.waitForLoadState("networkidle", { timeout: 15_000 }).catch(() => undefined);
   await page
     .getByTestId("avatar-file")
     .setInputFiles({ name: "me.jpg", mimeType: "image/jpeg", buffer: upload });

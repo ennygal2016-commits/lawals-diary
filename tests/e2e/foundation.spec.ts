@@ -23,6 +23,8 @@ let appId = "";
 
 test.afterAll(async () => {
   if (!appId) return;
+  // The database notifies both partners of every application; remove those for the test one.
+  await db().from("notifications").delete().eq("type", "application").eq("payload->>application_id", appId);
   const { data: docs } = await db()
     .from("application_documents")
     .select("storage_path")

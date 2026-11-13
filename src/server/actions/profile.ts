@@ -9,6 +9,7 @@ import { notifyPrefsSchema } from "@/lib/validation/notifications";
 import { createClient } from "@/lib/supabase/server";
 import { avatarCropSchema, profileSchema, type ProfileInput } from "@/lib/validation/profile";
 import { AVATAR_BUCKET } from "@/server/queries/viewer";
+import { removeFiles } from "@/server/photos/storage";
 
 export type ActionResult =
   | { ok: true; message: string }
@@ -93,11 +94,11 @@ export async function uploadAvatar(formData: FormData): Promise<ActionResult> {
     .update({ avatar_path: path })
     .eq("user_id", user.id);
   if (updateError) {
-    await supabase.storage.from(AVATAR_BUCKET).remove([path]);
+    await removeFiles(supabase, AVATAR_BUCKET, [path]);
     return SAVE_FAILED;
   }
 
-  if (current?.avatar_path) await supabase.storage.from(AVATAR_BUCKET).remove([current.avatar_path]);
+  if (current?.avatar_path) await removeFiles(supabase, AVATAR_BUCKET, [current.avatar_path]);
 
   revalidatePath("/admin", "layout");
   return { ok: true, message: "Photo updated." };
@@ -114,7 +115,7 @@ export async function removeAvatar(): Promise<ActionResult> {
     .single();
   const { error } = await supabase.from("profiles").update({ avatar_path: null }).eq("user_id", user.id);
   if (error) return SAVE_FAILED;
-  if (current?.avatar_path) await supabase.storage.from(AVATAR_BUCKET).remove([current.avatar_path]);
+  if (current?.avatar_path) await removeFiles(supabase, AVATAR_BUCKET, [current.avatar_path]);
 
   revalidatePath("/admin", "layout");
   return { ok: true, message: "Photo removed." };

@@ -15,6 +15,7 @@ import { COVER_MAX_BYTES, processCover } from "@/lib/images/cover";
 import { PhotoError } from "@/lib/images/photo";
 import { createClient } from "@/lib/supabase/server";
 import { PHOTO_BUCKET } from "@/server/queries/photos";
+import { removeFiles } from "@/server/photos/storage";
 
 export type BookResult = { ok: true; message: string; id?: string } | { ok: false; message: string };
 const SIGNED_OUT: BookResult = { ok: false, message: "Your session has ended. Sign in again." };
@@ -152,7 +153,7 @@ export async function updateBook(form: FormData): Promise<BookResult> {
     .update({ ...parsed.data, ...(cover ? { cover_path: cover } : {}) })
     .eq("id", id);
   if (error) return { ok: false, message: "That didn’t save. Try again." };
-  if (cover && before.cover_path) await supabase.storage.from(PHOTO_BUCKET).remove([before.cover_path]);
+  if (cover && before.cover_path) await removeFiles(supabase, PHOTO_BUCKET, [before.cover_path]);
   revalidatePath("/admin/bookshelf");
   revalidatePath(`/admin/bookshelf/${id}`);
   return { ok: true, id, message: "Saved." };
@@ -165,7 +166,7 @@ export async function deleteBook(id: string): Promise<BookResult> {
   if (!data) return { ok: false, message: "That book doesn’t exist." };
   const { error } = await supabase.from("books").delete().eq("id", id);
   if (error) return { ok: false, message: "Couldn’t remove that book." };
-  if (data.cover_path) await supabase.storage.from(PHOTO_BUCKET).remove([data.cover_path]);
+  if (data.cover_path) await removeFiles(supabase, PHOTO_BUCKET, [data.cover_path]);
   revalidatePath("/admin/bookshelf");
   return { ok: true, message: "Book removed from the shelf." };
 }
