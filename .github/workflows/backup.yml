@@ -1,0 +1,61 @@
+# Nightly encrypted backup of the PRODUCTION database (Supabase Free has no automatic backups you can restore).
+#
+# Repository secrets:
+#   PROD_DB_URL         Supabase → Connect → "Session pooler" connection string (with the database password)
+#   BACKUP_PASSPHRASE   a long random passphrase — keep a copy in your password manager; without it the backup
+#                       can't be opened
+#
+# Each run uploads one AES-256 encrypted pg_dump (schemas public, auth, storage — rows only, not the photo files)
+# as a workflow artifact kept for 30 days. Photos: download "Export your data" from Settings once a month.
+# Restore steps are in DEPLOY.md §9.
+name: Nightly database backup
+
+on:
+  schedule:
+    - cron: "30 7 * * *" # 07:30 UTC = 02:30 / 03:30 in Toronto
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check the secrets are set
+        env:
+          PROD_DB_URL: ${{ secrets.PROD_DB_URL }}
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          if [ -z "$PROD_DB_URL" ] || [ -z "$BACKUP_PASSPHRASE" ]; then
+            echo "::error::Set the PROD_DB_URL and BACKUP_PASSPHRASE repository secrets (DEPLOY.md §9)."
+            exit 1
+          fi
+
+      - name: Dump the database (pg_dump 17, matching Supabase)
+        env:
+          PROD_DB_URL: ${{ secrets.PROD_DB_URL }}
+        run: |
+          stamp=$(date -u +%Y-%m-%dT%H%MZ)
+          echo "STAMP=$stamp" >> "$GITHUB_ENV"
+          docker run --rm -e PROD_DB_URL postgres:17-alpine \
+            sh -c 'pg_dump "$PROD_DB_URL" --format=custom --no-owner --no-privileges \
+                     --schema=public --schema=auth --schema=storage' > "lawals-diary-$stamp.dump"
+          test -s "lawals-diary-$stamp.dump"
+          ls -lh "lawals-diary-$stamp.dump"
+
+      - name: Encrypt (AES-256, passphrase from secrets)
+        env:
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          gpg --batch --yes --symmetric --cipher-algo AES256 --passphrase-fd 0 \
+            --output "lawals-diary-$STAMP.dump.gpg" "lawals-diary-$STAMP.dump" <<< "$BACKUP_PASSPHRASE"
+          shred -u "lawals-diary-$STAMP.dump"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: db-backup-${{ env.STAMP }}
+          path: lawals-diary-${{ env.STAMP }}.dump.gpg
+          retention-days: 30
+          compression-level: 0

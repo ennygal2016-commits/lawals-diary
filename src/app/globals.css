@@ -1,0 +1,301 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/*
+ * Lawal's diary — "Nocturne" design tokens.
+ * Source of truth: docs/DESIGN.md §2. Values match the Nocturne artifact exactly,
+ * except --subtle which is only allowed on text >= 24px (it is 3.5:1 on --surface).
+ * tests/unit/tokens.test.ts checks every text/background pair for WCAG 2.2 AA.
+ */
+:root {
+  color-scheme: dark;
+
+  /* Surfaces */
+  --bg: #0e0c14; /* page */
+  --surface: #15121c; /* cards, panels */
+  --raised: #17141f; /* inputs, icon buttons */
+  --overlay: #1c1826; /* menus, subtle buttons, dialogs */
+  --note: #1a1420; /* highlighted note card */
+  --selected: #1f1a28; /* selected tile fill */
+  --placeholder-tint: #1d1826; /* photo placeholder */
+
+  /* Lines */
+  --border: #2a2535; /* card + input borders */
+  --border-strong: #2e2838; /* chips, featured card, timeline rail */
+  --border-accent: #3a2f45; /* note composer, dialogs, CTA panels */
+  --border-muted: #3a3345; /* subtle pill buttons, dashed empty states */
+  --border-dashed: #4a4356; /* dashed "add" and "More filters" */
+  --divider: #241f2e; /* header bottom, month heading rule */
+  --divider-soft: #1e1a26; /* list row dividers */
+
+  /* Text */
+  --fg: #f2edf5; /* body + headings (16.8:1 on bg) */
+  --fg-soft: #c9c2d3; /* nav links, secondary copy (11.2:1) */
+  --muted: #a49db0; /* eyebrows, meta (7.4:1) */
+  --faint: #8e879a; /* timestamps, counters, placeholders (5.0:1 worst case) */
+  --subtle: #6f6880; /* LARGE TEXT ONLY (>= 24px): de-emphasised year, title placeholder */
+
+  /* Accent — partner A (pink) */
+  --accent: #ff8a9b;
+  --accent-hover: #ffb3be;
+  --accent-ink: #1a0e12; /* text on accent fill (8.4:1) */
+  --accent-soft: #2a1e28; /* active nav pill */
+
+  /* Lavender — partner B, badges, public */
+  --lavender: #b9a6ff;
+  --lavender-ink: #140f22;
+  --lavender-soft: #221d33;
+  --lavender-text: #d9ceff;
+
+  /* Status */
+  --success: #7ee0b5; /* "Draft saved", live dot */
+  --warning: #ffc98a;
+  --danger: #ff6b6b; /* delete, errors (7.0:1) */
+  --danger-soft: #2c1517;
+
+  /* Inverse — the dark-theme equivalent of the PRD's --ink */
+  --inverse: #f2edf5; /* selected chips, today pill, quick-write, toast */
+  --inverse-ink: #0e0c14;
+
+  /* Moods */
+  --mood-loved: #ff8a9b;
+  --mood-happy: #ffc98a;
+  --mood-calm: #7ec8e0;
+  --mood-excited: #b9a6ff;
+  --mood-funny: #7ee0b5;
+  --mood-tired: #8e879a;
+  --mood-bittersweet: #d6a3c9;
+  --mood-sad: #6f8fd1;
+
+  /* Effects */
+  --shadow-menu: 0 12px 32px rgba(0, 0, 0, 0.45);
+  --shadow-fab: 0 8px 30px rgba(0, 0, 0, 0.5);
+  --glow-accent: 0 0 24px rgba(255, 138, 155, 0.35);
+  --glow-accent-lg: 0 0 40px rgba(255, 138, 155, 0.25);
+  --glow-lavender: 0 0 32px rgba(185, 166, 255, 0.35);
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-raised: var(--raised);
+  --color-overlay: var(--overlay);
+  --color-note: var(--note);
+  --color-selected: var(--selected);
+  --color-placeholder-tint: var(--placeholder-tint);
+
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-border-accent: var(--border-accent);
+  --color-border-muted: var(--border-muted);
+  --color-border-dashed: var(--border-dashed);
+  --color-divider: var(--divider);
+  --color-divider-soft: var(--divider-soft);
+
+  --color-fg: var(--fg);
+  --color-fg-soft: var(--fg-soft);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-subtle: var(--subtle);
+
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-soft: var(--accent-soft);
+
+  --color-lavender: var(--lavender);
+  --color-lavender-ink: var(--lavender-ink);
+  --color-lavender-soft: var(--lavender-soft);
+  --color-lavender-text: var(--lavender-text);
+
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+
+  --color-inverse: var(--inverse);
+  --color-inverse-ink: var(--inverse-ink);
+
+  --color-mood-loved: var(--mood-loved);
+  --color-mood-happy: var(--mood-happy);
+  --color-mood-calm: var(--mood-calm);
+  --color-mood-excited: var(--mood-excited);
+  --color-mood-funny: var(--mood-funny);
+  --color-mood-tired: var(--mood-tired);
+  --color-mood-bittersweet: var(--mood-bittersweet);
+  --color-mood-sad: var(--mood-sad);
+
+  --font-sans: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --font-serif: var(--font-instrument-serif), Georgia, serif;
+
+  --radius-input: 10px;
+  --radius-btn: 12px;
+  --radius-btn-lg: 14px;
+  --radius-tile: 14px;
+  --radius-card: 20px;
+  --radius-panel: 24px;
+  --radius-hero: 28px;
+
+  --shadow-menu: var(--shadow-menu);
+  --shadow-fab: var(--shadow-fab);
+  --shadow-glow: var(--glow-accent);
+  --shadow-glow-lg: var(--glow-accent-lg);
+  --shadow-glow-lavender: var(--glow-lavender);
+}
+
+/* Type roles — see DESIGN.md §2 "Type" */
+@utility eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.4;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  @media (width >= 48rem) {
+    font-size: 12px;
+  }
+}
+
+@utility serif {
+  font-family: var(--font-serif);
+  font-weight: 400;
+}
+
+@utility page-title {
+  font-family: var(--font-serif);
+  font-weight: 400;
+  font-size: 44px;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  @media (width >= 48rem) {
+    font-size: 64px;
+  }
+}
+
+@utility visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@layer base {
+  html {
+    background: var(--bg);
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    min-height: 100dvh;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-sans);
+    font-size: 16px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  a {
+    color: var(--accent);
+  }
+  a:hover {
+    color: var(--accent-hover);
+  }
+  ::selection {
+    background: var(--accent);
+    color: var(--accent-ink);
+  }
+  ::placeholder {
+    color: var(--faint);
+    opacity: 1;
+  }
+  /* WCAG 2.4.7 / 2.4.13 — one visible focus ring everywhere (8.7:1 on bg). */
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+/* Entry bodies — the Tiptap editor and the read view share these rules (DESIGN.md §2 type scale). */
+@layer components {
+  .diary-prose {
+    font-size: 17px;
+    line-height: 1.65;
+    color: var(--fg-soft);
+    overflow-wrap: anywhere;
+  }
+  .diary-prose > * + * {
+    margin-top: 0.9em;
+  }
+  .diary-prose p {
+    margin: 0;
+  }
+  .diary-prose h2 {
+    margin: 1.4em 0 0;
+    font-family: var(--font-instrument-serif), serif;
+    font-size: 28px;
+    font-weight: 400;
+    line-height: 1.15;
+    color: var(--fg);
+  }
+  .diary-prose ul {
+    margin-block: 0;
+    padding-left: 1.3em;
+    list-style: disc;
+  }
+  .diary-prose li + li {
+    margin-top: 0.3em;
+  }
+  .diary-prose li::marker {
+    color: var(--accent);
+  }
+  .diary-prose blockquote {
+    margin-inline: 0;
+    padding-left: 1em;
+    border-left: 2px solid var(--accent);
+    font-family: var(--font-instrument-serif), serif;
+    font-style: italic;
+    font-size: 21px;
+    line-height: 1.4;
+    color: var(--fg);
+  }
+  .diary-prose a {
+    color: var(--accent);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .diary-prose strong {
+    color: var(--fg);
+    font-weight: 600;
+  }
+  /* Tiptap */
+  .diary-prose.ProseMirror {
+    outline: none;
+    min-height: 220px;
+  }
+  .diary-prose .is-editor-empty:first-child::before {
+    content: attr(data-placeholder);
+    float: left;
+    height: 0;
+    pointer-events: none;
+    color: var(--faint);
+  }
+}

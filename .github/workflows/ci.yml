@@ -1,0 +1,74 @@
+# Lint, typecheck, formatting, Vitest and Playwright on every push and pull request.
+#
+# Without secrets, the database-backed tests skip themselves and everything else runs (privacy suite routes,
+# axe, previews, public site). Add these repository secrets to also run the signed-in and RLS tests against the
+# Supabase *dev* project (never production):
+#   DEV_SUPABASE_URL, DEV_SUPABASE_ANON_KEY, DEV_SUPABASE_SERVICE_ROLE_KEY,
+#   DEV_ADMIN_EMAILS, DEV_ADMIN_PASSWORD_A, DEV_ADMIN_PASSWORD_B
+name: CI
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NEXT_TELEMETRY_DISABLED: "1"
+  NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.DEV_SUPABASE_URL }}
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.DEV_SUPABASE_ANON_KEY }}
+  SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.DEV_SUPABASE_SERVICE_ROLE_KEY }}
+  ADMIN_EMAILS: ${{ secrets.DEV_ADMIN_EMAILS }}
+  ADMIN_PASSWORD_A: ${{ secrets.DEV_ADMIN_PASSWORD_A }}
+  ADMIN_PASSWORD_B: ${{ secrets.DEV_ADMIN_PASSWORD_B }}
+  # Cloudflare's public always-pass test keys (not secrets).
+  NEXT_PUBLIC_TURNSTILE_SITE_KEY: 1x00000000000000000000AA
+  TURNSTILE_SECRET_KEY: 1x0000000000000000000000000000000AA
+
+jobs:
+  check:
+    name: Lint, typecheck, unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run format:check
+      - run: npm run test
+
+  e2e:
+    name: Playwright (375 px + 1440 px)
+    needs: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Run Playwright (builds and starts the app itself)
+        run: npx playwright test
+      - name: Upload the report when something fails
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
